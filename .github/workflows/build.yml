@@ -207,7 +207,8 @@ jobs:
           Copy-Item Aria-Vault.exe, LICENSE, LICENCES-TIERS.txt dist/
           # Textes complets des licences des composants embarqués
           Copy-Item vw-src/LICENSE.txt dist/LICENCE-Vaultwarden-AGPL-3.0.txt
-          Invoke-WebRequest https://www.gnu.org/licenses/gpl-3.0.txt -OutFile dist/LICENCE-interface-web-GPL-3.0.txt
+          # Texte officiel de la GPL-3.0, gardé dans le dépôt (gnu.org ne répond pas toujours aux runners)
+          Copy-Item licences/GPL-3.0.txt dist/LICENCE-interface-web-GPL-3.0.txt
 
           $sha = (Get-FileHash dist/Aria-Vault.exe -Algorithm SHA256).Hash.ToLower()
           @"
