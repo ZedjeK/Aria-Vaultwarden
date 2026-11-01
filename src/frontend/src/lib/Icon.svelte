@@ -16,6 +16,10 @@
     <rect x="3" y="4" width="18" height="5" rx="1.5" /><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9" /><path d="M10 13h4" />
   {:else if name === 'vault'}
     <rect x="3" y="4" width="18" height="15" rx="2" /><circle cx="12" cy="11.5" r="4" /><path d="M12 9.5v2l1.5 1" /><path d="M6 19v2" /><path d="M18 19v2" />
+  {:else if name === 'replier'}
+    <path d="M11 7l-5 5 5 5" /><path d="M18 7l-5 5 5 5" />
+  {:else if name === 'deplier'}
+    <path d="M6 7l5 5-5 5" /><path d="M13 7l5 5-5 5" />
   {:else if name === 'external'}
     <path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
   {/if}

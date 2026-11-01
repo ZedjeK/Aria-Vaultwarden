@@ -22,6 +22,7 @@ import (
 	"aria-vault/internal/config"
 	"aria-vault/internal/demarrage"
 	"aria-vault/internal/eveil"
+	"aria-vault/internal/fenetre"
 	"aria-vault/internal/journal"
 	"aria-vault/internal/maj"
 	"aria-vault/internal/moteur"
@@ -96,13 +97,12 @@ func main() {
 	}
 	ctx, arreter := context.WithCancel(context.Background())
 
+	suivi := nouveauSuivi(p.Base)
 	montrer := func() {
 		if window == nil {
 			return
 		}
-		window.Show()
-		window.Restore()
-		window.Focus()
+		suivi.montrer()
 	}
 
 	app := application.New(application.Options{
@@ -199,16 +199,18 @@ func main() {
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",
 		Title:     "Aria Vault",
-		Width:     980,
-		Height:    640,
-		MinWidth:  420,
-		MinHeight: 520,
-		// Sans configuration, rien à servir : la fenêtre s'ouvre même en mode silencieux.
-		Hidden:           silencieux && configure,
+		Width:     fenetre.LargeurIdeale,
+		Height:    fenetre.HauteurIdeale,
+		MinWidth:  fenetre.LargeurMin,
+		MinHeight: fenetre.HauteurMin,
+		// Toujours créée cachée : elle est placée (taille retenue ou adaptée à
+		// l'écran) puis affichée au démarrage de l'appli.
+		Hidden:           true,
 		BackgroundColour: application.NewRGB(3, 8, 18),
 		URL:              "/",
 		Windows:          application.WindowsWindow{Theme: application.Dark},
 	})
+	suivi.w = window
 	// Fermer la fenêtre la cache : le coffre continue de servir le téléphone.
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		window.Hide()
@@ -264,6 +266,8 @@ func main() {
 
 	// Le coffre démarre une fois l'appli lancée (l'icône doit exister pour suivre son état).
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		// Sans configuration, rien à servir : la fenêtre s'ouvre même en mode silencieux.
+		suivi.placer(app, !(silencieux && configure))
 		majTray()
 		go svc.boucleQuotidienne(ctx)
 		go svc.boucleIP(ctx)

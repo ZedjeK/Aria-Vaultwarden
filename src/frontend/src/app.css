@@ -96,12 +96,15 @@ a:focus-visible {
 
 /* ---------- Briques communes aux pages ---------- */
 
+/* Le contenu occupe la largeur de la fenêtre, jusqu'à 1600 px, puis se centre. */
 .page {
   container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 1100px;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 .page-head {
@@ -143,6 +146,31 @@ a:focus-visible {
   .grid-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* 1, 2 puis 3 colonnes selon la largeur de la fenêtre */
+.grid-3 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@container (min-width: 640px) {
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (min-width: 1180px) {
+  .grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* Une carte qui adapte son propre contenu à sa largeur */
+.cq {
+  container-type: inline-size;
+}
+.pleine {
+  grid-column: 1 / -1;
 }
 
 .card {
@@ -216,10 +244,11 @@ a:focus-visible {
   gap: 10px;
   flex-wrap: wrap;
 }
+/* Tailles pensées pour la souris (36 px), pas pour le doigt */
 .btn-primary,
 .btn-ghost {
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 36px;
+  padding: 0 14px;
   border-radius: 10px 0;
   font-family: var(--font-mono);
   font-size: 13px;
@@ -284,7 +313,7 @@ a:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 44px;
+  min-height: 40px;
 }
 .row + .row {
   border-top: 1px solid var(--line-soft);
@@ -364,7 +393,7 @@ a:focus-visible {
 }
 input {
   width: 100%;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 12px;
   border-radius: 8px 0;
   corner-shape: bevel;
@@ -388,8 +417,8 @@ input:focus-visible {
   gap: 8px;
 }
 .small {
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 30px;
+  padding: 0 10px;
   font-size: 12px;
 }
 .value {

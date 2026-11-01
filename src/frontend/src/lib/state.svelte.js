@@ -47,7 +47,7 @@ export function startPolling() {
   timer = setInterval(() => {
     if (app.busy) return
     refresh()
-    if (app.page === 'journal' || app.status?.moteur?.etat === 'demarrage') refreshJournal()
+    if (app.page === 'journal' || app.page === 'home' || app.status?.moteur?.etat === 'demarrage') refreshJournal()
   }, 2000)
 }
 
@@ -148,6 +148,17 @@ async function runBackup(fn) {
 }
 
 export const backupNow = () => runBackup(() => call('Backup'))
+
+// Accueil et Ctrl+S : sans dossier choisi, la page Sauvegardes le fait choisir.
+export async function sauvegarderMaintenant() {
+  if (!app.status?.configure) return
+  if (!app.backups) await loadBackups()
+  if (!app.backups?.dossier) {
+    app.page = 'sauvegardes'
+    return
+  }
+  return backupNow()
+}
 export async function restoreBackup(nom, phrase = '') {
   const res = await runBackup(() => call('Restore', nom, phrase))
   if (res?.error) app.error = res.error

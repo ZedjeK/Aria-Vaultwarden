@@ -82,7 +82,7 @@
     compatible.
   </p>
 
-  <div class="grid-2">
+  <div class="https-grid">
     <section class="card">
       <div class="card-head">
         <h2>Domaine</h2>
@@ -188,64 +188,63 @@
         {#if f.note}<p class="hint">💡 {f.note}</p>{/if}
       {/if}
     </section>
-  </div>
-
-  <section class="card important" aria-labelledby="titre-box">
-    <div class="card-head">
-      <h2 id="titre-box">Étape indispensable : une adresse IP fixe pour ce PC</h2>
-      <span class="chip warn">À faire une fois</span>
-    </div>
-    <p class="card-text">
-      Ton domaine pointe vers l'adresse locale de ce PC. Par défaut, la box peut lui en donner une autre après un redémarrage :
-      ton téléphone chercherait alors le coffre au mauvais endroit. Réserve-lui son adresse actuelle sur ta box, c'est
-      l'affaire de deux minutes.
-    </p>
-    <TutoBox ip={ip.locale?.ip} mac={ip.locale?.mac} carte={ip.locale?.interface} />
-  </section>
-
-  <div class="grid-2">
-    <section class="card">
-      <div class="card-head">
-        <h2>Adresse publiée</h2>
-        {#if ip.publiee}
-          <span class="chip" class:ok={ipOK} class:warn={!ipOK}>{ipOK ? 'À jour' : 'Différente'}</span>
-        {/if}
-      </div>
-      <div class="row">
-        <div class="row-text">
-          <span class="row-name">Publier l'IP de ce PC automatiquement</span>
-          <span class="row-detail">Vérifiée au démarrage puis toutes les 10 minutes, mise à jour chez ton fournisseur si besoin.</span>
+    <div class="pile">
+      <section class="card">
+        <div class="card-head">
+          <h2>Adresse publiée</h2>
+          {#if ip.publiee}
+            <span class="chip" class:ok={ipOK} class:warn={!ipOK}>{ipOK ? 'À jour' : 'Différente'}</span>
+          {/if}
         </div>
-        <Switch checked={st?.ipAuto ?? true} disabled={app.busy} label="Publier l'IP de ce PC automatiquement" onchange={setIPAuto} />
-      </div>
-      <div class="row"><span class="row-name">IP de ce PC</span><span class="value mono">{ip.locale?.ip || '—'}</span></div>
-      <div class="row"><span class="row-name">IP de {st?.domaine || 'ton domaine'}</span><span class="value mono">{ip.publiee || '—'}</span></div>
-      <div class="row">
-        <span class="row-name">Dernière vérification</span>
-        <span class="value">{quand(ip.verifie)}</span>
-      </div>
-      {#if ip.erreur}<p class="error" role="alert">{ip.erreur}</p>{/if}
-      {#if ip.avertissement}<p class="hint warn-text">{ip.avertissement}</p>{/if}
-      {#if !st?.ipAuto && ip.publiee && !ipOK}
-        <p class="hint warn-text">Ton domaine ne pointe pas vers ce PC : active la publication automatique, ou corrige l'adresse chez ton fournisseur.</p>
-      {/if}
-      <div class="actions">
-        <button class="btn-ghost grow" onclick={checkIP} disabled={app.busy || !configure}>{app.busy ? 'Vérification…' : 'Vérifier maintenant'}</button>
-      </div>
-    </section>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-name">Publier l'IP de ce PC automatiquement</span>
+            <span class="row-detail">Vérifiée au démarrage puis toutes les 10 minutes, mise à jour chez ton fournisseur si besoin.</span>
+          </div>
+          <Switch checked={st?.ipAuto ?? true} disabled={app.busy} label="Publier l'IP de ce PC automatiquement" onchange={setIPAuto} />
+        </div>
+        <div class="row"><span class="row-name">IP de ce PC</span><span class="value mono">{ip.locale?.ip || '—'}</span></div>
+        <div class="row"><span class="row-name">IP de {st?.domaine || 'ton domaine'}</span><span class="value mono">{ip.publiee || '—'}</span></div>
+        <div class="row">
+          <span class="row-name">Dernière vérification</span>
+          <span class="value">{quand(ip.verifie)}</span>
+        </div>
+        {#if ip.erreur}<p class="error" role="alert">{ip.erreur}</p>{/if}
+        {#if ip.avertissement}<p class="hint warn-text">{ip.avertissement}</p>{/if}
+        {#if !st?.ipAuto && ip.publiee && !ipOK}
+          <p class="hint warn-text">Ton domaine ne pointe pas vers ce PC : active la publication automatique, ou corrige l'adresse chez ton fournisseur.</p>
+        {/if}
+        <div class="actions">
+          <button class="btn-ghost grow" onclick={checkIP} disabled={app.busy || !configure}>{app.busy ? 'Vérification…' : 'Vérifier maintenant'}</button>
+        </div>
+      </section>
 
-    <section class="card">
-      <h2>Certificat</h2>
-      <div class="row"><span class="row-name">État</span><span class="chip" class:ok={m.etat === 'actif'}>{m.etat === 'actif' ? 'Servi sur le port 443' : m.etat === 'demarrage' ? 'En cours' : 'Inactif'}</span></div>
-      <div class="row"><span class="row-name">Valable jusqu'au</span><span class="value">{formatDate(m.certificat) || '—'}</span></div>
-      <div class="row"><span class="row-name">Renouvellement</span><span class="value">auto, 30 j avant</span></div>
+      <section class="card">
+        <h2>Certificat</h2>
+        <div class="row"><span class="row-name">État</span><span class="chip" class:ok={m.etat === 'actif'}>{m.etat === 'actif' ? 'Servi sur le port 443' : m.etat === 'demarrage' ? 'En cours' : 'Inactif'}</span></div>
+        <div class="row"><span class="row-name">Valable jusqu'au</span><span class="value">{formatDate(m.certificat) || '—'}</span></div>
+        <div class="row"><span class="row-name">Renouvellement</span><span class="value">auto, 30 j avant</span></div>
 
-      <span class="eyebrow">Comment ça marche</span>
-      <ol class="how">
-        <li>Ton domaine pointe vers l'adresse <strong>privée</strong> de ce PC (192.168.x.x) : il n'est joignable que depuis chez toi.</li>
-        <li>Aria prouve à Let's Encrypt qu'il contrôle le domaine par un enregistrement DNS (DNS-01) : aucun port à ouvrir sur la box.</li>
-        <li>Hors de chez toi, ton téléphone passe par ton VPN.</li>
-      </ol>
+        <span class="eyebrow">Comment ça marche</span>
+        <ol class="how">
+          <li>Ton domaine pointe vers l'adresse <strong>privée</strong> de ce PC (192.168.x.x) : il n'est joignable que depuis chez toi.</li>
+          <li>Aria prouve à Let's Encrypt qu'il contrôle le domaine par un enregistrement DNS (DNS-01) : aucun port à ouvrir sur la box.</li>
+          <li>Hors de chez toi, ton téléphone passe par ton VPN.</li>
+        </ol>
+      </section>
+    </div>
+
+    <section class="card important cq" aria-labelledby="titre-box">
+      <div class="card-head">
+        <h2 id="titre-box">Étape indispensable : une adresse IP fixe pour ce PC</h2>
+        <span class="chip warn">À faire une fois</span>
+      </div>
+      <p class="card-text">
+        Ton domaine pointe vers l'adresse locale de ce PC. Par défaut, la box peut lui en donner une autre après un redémarrage :
+        ton téléphone chercherait alors le coffre au mauvais endroit. Réserve-lui son adresse actuelle sur ta box, c'est
+        l'affaire de deux minutes.
+      </p>
+      <TutoBox ip={ip.locale?.ip} mac={ip.locale?.mac} carte={ip.locale?.interface} />
     </section>
   </div>
 </div>
@@ -319,6 +318,48 @@
     font-size: 12px;
     text-decoration: underline;
     text-underline-offset: 3px;
+  }
+  /* Grand écran : la colonne de droite empile adresse publiée et certificat ;
+     sur deux colonnes, elle passe dessous, sur toute la largeur. */
+  .https-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'domaine' 'tuto' 'box' 'pile';
+    gap: 16px;
+    align-items: start;
+  }
+  .https-grid > :nth-child(1) {
+    grid-area: domaine;
+  }
+  .https-grid > :nth-child(2) {
+    grid-area: tuto;
+  }
+  .pile {
+    grid-area: pile;
+    display: grid;
+    gap: 16px;
+    align-items: start;
+  }
+  .important {
+    grid-area: box;
+  }
+  @container (min-width: 640px) {
+    .https-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-areas: 'domaine tuto' 'box box' 'pile pile';
+    }
+    .pile {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container (min-width: 1180px) {
+    .https-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-areas: 'domaine tuto pile' 'box box pile';
+    }
+    .pile {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
   .important {
     border-color: color-mix(in srgb, var(--warn) 45%, var(--line));

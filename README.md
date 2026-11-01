@@ -183,6 +183,8 @@ Page **Sauvegardes** → « Importer un ancien coffre… », puis choisis ton an
 ## Au quotidien
 
 - **Fermer la fenêtre** la renvoie dans la zone de notification : le coffre continue de servir ton téléphone.
+- **La fenêtre** s'adapte à ton écran (environ 1280×820 au premier lancement), retient sa taille, sa position et son état « agrandie », et passe de 1 à 3 colonnes selon sa largeur. Le bouton `«` en bas de la barre latérale la replie en icônes.
+- **Raccourcis clavier** : `Ctrl+1` à `Ctrl+5` pour les pages, `Ctrl+S` pour sauvegarder, `Ctrl+R` ou `F5` pour actualiser l'état.
 - **Clic droit sur l'icône** : ouvrir le coffre, sauvegarder, démarrer ou arrêter le serveur, quitter.
 - **Adresse IP** : Aria vérifie au démarrage puis toutes les 10 minutes que ton domaine pointe vers ce PC, et la corrige chez ton fournisseur si besoin (désactivable, page HTTPS). Seules les adresses de réseau local sont publiées.
 - **Mettre à jour** : une fois par jour, Aria regarde sur GitHub si une nouvelle version est sortie (désactivable dans Réglages). L'accueil et le menu de l'icône indiquent « à jour » ou la version disponible, et un bandeau propose **Installer**. Ce bouton télécharge le zip de la release depuis ce dépôt, vérifie son empreinte SHA-256 et celle de l'exe (celles publiées dans les notes et calculées par GitHub), remplace l'exe puis lance la nouvelle version. Rien n'est téléchargé sans ton clic, et en cas d'erreur rien n'est modifié. L'ancien exe est gardé en `.old` jusqu'au lancement suivant.
@@ -275,6 +277,7 @@ src/
 │   ├── config/             # réglages, identifiants chiffrés DPAPI, export .ariavault
 │   ├── maj/                # nouvelle version publiée ? installation vérifiée en un clic
 │   ├── eveil/              # empêcher la mise en veille
+│   ├── fenetre/            # taille et position de la fenêtre retenues
 │   ├── releve/             # une nouvelle version prend la place de l'ancienne
 │   ├── demarrage/          # lancement à l'ouverture de session
 │   ├── paths/              # emplacements, migration depuis Aria Vaultwarden

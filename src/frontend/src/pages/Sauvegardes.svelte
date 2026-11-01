@@ -120,7 +120,7 @@
   {#if message}<p class="banner ok" role="status">{message}</p>{/if}
   {#if app.error}<p class="error" role="alert">{app.error}</p>{/if}
 
-  <div class="grid-2">
+  <div class="grid-3">
     <section class="card">
       <h2>Coffre</h2>
       <button class="btn-primary big" onclick={sauvegarder} disabled={app.busy || !app.status?.configure}>
@@ -244,40 +244,46 @@
       </div>
       <p class="hint">Un ancien dossier data, comme celui de C:\Vaultwarden.</p>
     </section>
-  </div>
 
-  <section class="card">
-    <div class="card-head">
-      <h2>Réglages d'Aria</h2>
-      <button class="btn-ghost small" onclick={() => (montrerPhrases = !montrerPhrases)}>
-        {montrerPhrases ? 'Masquer les phrases' : 'Afficher les phrases'}
-      </button>
-    </div>
-    <p class="card-text">
-      Fournisseur DNS, domaine, e-mail et identifiants, dans un fichier .ariavault à part du coffre, entièrement chiffré par ta phrase
-      de passe : sans elle, rien n'y est lisible. Sur un autre PC, tu retrouves tout sans rien ressaisir.
-    </p>
-    <div class="grid-2">
-      <form class="form" onsubmit={(e) => { e.preventDefault(); exporter() }}>
-        <span class="eyebrow">Exporter</span>
-        <input type={montrerPhrases ? 'text' : 'password'} bind:value={phraseExport} placeholder="Phrase de passe (8 caractères min.)" autocomplete="new-password" />
-        <input type={montrerPhrases ? 'text' : 'password'} bind:value={phraseExport2} placeholder="La même, pour confirmer" autocomplete="new-password" />
-        {#if phraseExport2 && phraseExport !== phraseExport2}<span class="field-error">Les deux phrases sont différentes.</span>{/if}
-        <button type="submit" class="btn-ghost" disabled={app.busy || !phraseOk || !app.status?.configure}>Exporter les réglages…</button>
-      </form>
-      <form class="form" onsubmit={(e) => { e.preventDefault(); importerReglages() }}>
-        <span class="eyebrow">Importer</span>
-        <input type={montrerPhrases ? 'text' : 'password'} bind:value={phraseImport} placeholder="Phrase de passe du fichier" autocomplete="off" />
-        <p class="hint">La phrase choisie à l'export. Si elle est fausse, rien n'est modifié.</p>
-        <button type="submit" class="btn-ghost" disabled={app.busy || !phraseImport}>Importer des réglages…</button>
-      </form>
-    </div>
-  </section>
+    <section class="card cq reglages-card">
+      <div class="card-head">
+        <h2>Réglages d'Aria</h2>
+        <button class="btn-ghost small" onclick={() => (montrerPhrases = !montrerPhrases)}>
+          {montrerPhrases ? 'Masquer les phrases' : 'Afficher les phrases'}
+        </button>
+      </div>
+      <p class="card-text">
+        Fournisseur DNS, domaine, e-mail et identifiants, dans un fichier .ariavault à part du coffre, entièrement chiffré par ta phrase
+        de passe : sans elle, rien n'y est lisible. Sur un autre PC, tu retrouves tout sans rien ressaisir.
+      </p>
+      <div class="grid-2">
+        <form class="form" onsubmit={(e) => { e.preventDefault(); exporter() }}>
+          <span class="eyebrow">Exporter</span>
+          <input type={montrerPhrases ? 'text' : 'password'} bind:value={phraseExport} placeholder="Phrase de passe (8 caractères min.)" autocomplete="new-password" />
+          <input type={montrerPhrases ? 'text' : 'password'} bind:value={phraseExport2} placeholder="La même, pour confirmer" autocomplete="new-password" />
+          {#if phraseExport2 && phraseExport !== phraseExport2}<span class="field-error">Les deux phrases sont différentes.</span>{/if}
+          <button type="submit" class="btn-ghost" disabled={app.busy || !phraseOk || !app.status?.configure}>Exporter les réglages…</button>
+        </form>
+        <form class="form" onsubmit={(e) => { e.preventDefault(); importerReglages() }}>
+          <span class="eyebrow">Importer</span>
+          <input type={montrerPhrases ? 'text' : 'password'} bind:value={phraseImport} placeholder="Phrase de passe du fichier" autocomplete="off" />
+          <p class="hint">La phrase choisie à l'export. Si elle est fausse, rien n'est modifié.</p>
+          <button type="submit" class="btn-ghost" disabled={app.busy || !phraseImport}>Importer des réglages…</button>
+        </form>
+      </div>
+    </section>
+  </div>
 </div>
 
 <style>
+  /* Sur deux colonnes, les réglages d'Aria passent dessous, sur toute la largeur. */
+  @container (min-width: 640px) and (max-width: 1179px) {
+    .reglages-card {
+      grid-column: 1 / -1;
+    }
+  }
   .big {
-    min-height: 52px;
+    min-height: 46px;
     font-size: 15px;
   }
   .btns {

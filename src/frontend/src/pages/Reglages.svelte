@@ -33,7 +33,7 @@
     <h1>Réglages</h1>
   </div>
 
-  <div class="grid-2">
+  <div class="grid-3">
     <section class="card">
       <h2>Coffre</h2>
       <div class="row">
@@ -64,8 +64,8 @@
         <button class="btn-ghost small" onclick={openData} disabled={app.busy}>Ouvrir</button>
       </div>
       <p class="hint">
-        Base, clés du serveur et pièces jointes : tout est là. Pour une sauvegarde, arrête le serveur (bouton ci-dessus)
-        avant de copier ce dossier.
+        Base, clés du serveur et pièces jointes : tout est là. Pour le sauvegarder, passe par la page Sauvegardes (ou
+        Ctrl+S) : le serveur est mis en pause le temps de la copie.
       </p>
 
       <div class="row">
@@ -156,12 +156,43 @@
         <button class="btn-ghost grow" onclick={verifier} disabled={app.busy}>{app.busy && app.installation === null ? 'Vérification…' : 'Vérifier'}</button>
       </div>
     </section>
+
+    <section class="card">
+      <h2>Raccourcis clavier</h2>
+      <div class="raccourcis">
+        <span><kbd>Ctrl</kbd> <kbd>1</kbd> … <kbd>5</kbd></span><span>Accueil, HTTPS, Sauvegardes, Réglages, Journal</span>
+        <span><kbd>Ctrl</kbd> <kbd>S</kbd></span><span>Sauvegarder le coffre maintenant</span>
+        <span><kbd>Ctrl</kbd> <kbd>R</kbd> ou <kbd>F5</kbd></span><span>Actualiser l'état</span>
+      </div>
+      <p class="hint">La taille et la position de la fenêtre sont retenues d'un lancement à l'autre. Le bouton en bas de la barre latérale la replie en icônes.</p>
+    </section>
   </div>
 
   {#if app.error}<p class="error" role="alert">{app.error}</p>{/if}
 </div>
 
 <style>
+  .raccourcis {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px 14px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  kbd {
+    display: inline-block;
+    min-width: 22px;
+    padding: 2px 6px;
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--surface-sunken);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-align: center;
+    color: var(--text);
+  }
   .warn-text {
     color: var(--warn);
   }

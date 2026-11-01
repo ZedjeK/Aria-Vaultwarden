@@ -3,7 +3,9 @@
   import { Events } from '@wailsio/runtime'
   import Icon from './lib/Icon.svelte'
   import Logo from './lib/Logo.svelte'
-  import { app, refresh, refreshJournal, startPolling, openVault, openRelease, installUpdate } from './lib/state.svelte.js'
+  import {
+    app, refresh, refreshJournal, startPolling, openVault, openRelease, installUpdate, sauvegarderMaintenant, loadBackups,
+  } from './lib/state.svelte.js'
   import Home from './pages/Home.svelte'
   import Https from './pages/Https.svelte'
   import Reglages from './pages/Reglages.svelte'
@@ -21,10 +23,58 @@
   const etat = $derived(app.status?.moteur?.etat ?? 'arrete')
   const version = $derived(app.status?.version ?? '')
 
+  // Barre latérale : repliée à la main (retenu sur ce PC) ou d'office si la fenêtre est étroite.
+  const cle = 'aria.barre-repliee'
+  let replieManuel = $state(lire())
+  let etroit = $state(false)
+  const replie = $derived(replieManuel || etroit)
+
+  function lire() {
+    try {
+      return localStorage.getItem(cle) === '1'
+    } catch {
+      return false
+    }
+  }
+  function basculer() {
+    replieManuel = !replieManuel
+    try {
+      localStorage.setItem(cle, replieManuel ? '1' : '0')
+    } catch {}
+  }
+
+  function aller(id) {
+    app.page = id
+    if (id === 'journal') refreshJournal()
+    if (id === 'sauvegardes') loadBackups()
+  }
+
+  // Raccourcis clavier : Ctrl+1…5 pour les pages, Ctrl+S pour sauvegarder,
+  // Ctrl+R ou F5 pour actualiser l'état (au lieu de recharger l'interface).
+  function clavier(e) {
+    const ctrl = e.ctrlKey || e.metaKey
+    if (ctrl && !e.shiftKey && !e.altKey && /^[1-5]$/.test(e.key)) {
+      e.preventDefault()
+      aller(nav[Number(e.key) - 1].id)
+    } else if (ctrl && e.key.toLowerCase() === 's') {
+      e.preventDefault()
+      if (!app.busy) sauvegarderMaintenant()
+    } else if ((ctrl && e.key.toLowerCase() === 'r') || e.key === 'F5') {
+      e.preventDefault()
+      refresh()
+      refreshJournal()
+      if (app.page === 'sauvegardes' || app.page === 'home') loadBackups()
+    }
+  }
+
   onMount(() => {
     refresh()
     refreshJournal()
     startPolling()
+    const mq = matchMedia('(max-width: 760px)')
+    etroit = mq.matches
+    const suivre = (e) => (etroit = e.matches)
+    mq.addEventListener('change', suivre)
     // Le Go peut demander d'afficher une page (ex. sauvegarde lancée depuis l'icône sans dossier).
     const off1 = Events.On('page', (e) => {
       if (nav.some((n) => n.id === e.data)) app.page = e.data
@@ -36,11 +86,14 @@
     return () => {
       off1?.()
       off2?.()
+      mq.removeEventListener('change', suivre)
     }
   })
 </script>
 
-<div class="shell">
+<svelte:window onkeydown={clavier} />
+
+<div class="shell" class:replie>
   <nav class="sidebar" aria-label="Sections">
     <div class="brand">
       <Logo size={56} dim={etat !== 'actif'} />
@@ -48,7 +101,7 @@
     </div>
 
     <ul class="nav">
-      {#each nav as item (item.id)}
+      {#each nav as item, i (item.id)}
         {@const lit = (item.id === 'home' && etat === 'actif') || (item.id === 'journal' && etat === 'erreur')}
         <li>
           <button
@@ -56,11 +109,8 @@
             class:active={app.page === item.id}
             aria-current={app.page === item.id ? 'page' : undefined}
             aria-label={item.label}
-            title={item.label}
-            onclick={() => {
-              app.page = item.id
-              if (item.id === 'journal') refreshJournal()
-            }}
+            title={`${item.label} (Ctrl+${i + 1})`}
+            onclick={() => aller(item.id)}
           >
             <span class="nav-icon">
               <Icon name={item.icon} />
@@ -90,7 +140,14 @@
         </span>
         <span class="open-arrow label" aria-hidden="true">↗</span>
       </button>
-      <span class="version label">aria-vault {version ? `v${version}` : ''}</span>
+      <div class="foot-row">
+        <span class="version label">aria-vault {version ? `v${version}` : ''}</span>
+        {#if !etroit}
+          <button class="plier" onclick={basculer} title={replieManuel ? 'Déplier la barre latérale' : 'Replier la barre latérale'} aria-label={replieManuel ? 'Déplier la barre latérale' : 'Replier la barre latérale'}>
+            <Icon name={replieManuel ? 'deplier' : 'replier'} size={16} />
+          </button>
+        {/if}
+      </div>
     </div>
   </nav>
 
@@ -334,7 +391,9 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 10px;
-    max-width: 1100px;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
     padding: 10px 12px 10px 14px;
     border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     border-radius: 10px 0;
@@ -377,39 +436,70 @@
     gap: 16px;
   }
 
-  /* Fenêtre étroite : la barre latérale se replie en icônes */
+  .foot-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .plier {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: 6px 0;
+    corner-shape: bevel;
+    background: transparent;
+    color: var(--faint);
+  }
+  .plier:hover {
+    border-color: var(--line-strong);
+    background: var(--hover);
+    color: var(--accent);
+  }
+
+  /* Barre latérale repliée en icônes : à la main, ou d'office si la fenêtre est étroite */
+  .shell {
+    transition: grid-template-columns 0.18s ease;
+  }
+  .shell.replie {
+    grid-template-columns: 68px minmax(0, 1fr);
+  }
+  .replie .sidebar {
+    padding: 16px 8px;
+    align-items: center;
+  }
+  .replie .brand {
+    padding: 0;
+    justify-content: center;
+  }
+  .replie .label {
+    display: none;
+  }
+  .replie .nav-icon {
+    display: flex;
+  }
+  .replie .nav-item,
+  .replie .open {
+    justify-content: center;
+    padding: 0;
+    width: 48px;
+    min-height: 48px;
+  }
+  .replie .brand :global(svg) {
+    width: 44px;
+    height: 44px;
+  }
+  .replie .nav {
+    align-items: center;
+  }
+  .replie .foot-row {
+    justify-content: center;
+  }
   @media (max-width: 760px) {
-    .shell {
-      grid-template-columns: 68px minmax(0, 1fr);
-    }
-    .sidebar {
-      padding: 16px 8px;
-      align-items: center;
-    }
-    .brand {
-      padding: 0;
-      justify-content: center;
-    }
-    .label {
-      display: none;
-    }
-    .nav-icon {
-      display: flex;
-    }
-    .nav-item,
-    .open {
-      justify-content: center;
-      padding: 0;
-      width: 48px;
-      min-height: 48px;
-    }
-    .brand :global(svg) {
-      width: 44px;
-      height: 44px;
-    }
-    .nav {
-      align-items: center;
-    }
     .content {
       padding: 20px;
     }
