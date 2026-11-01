@@ -87,3 +87,43 @@ func TestExportOVH(t *testing.T) {
 		t.Errorf("import = %+v", got)
 	}
 }
+
+func TestExportServices(t *testing.T) {
+	c := &Config{Domaine: "vault.exemple.duckdns.org", Invitations: true}
+	c.SetIdentifiants(dnsprov.DuckDNS, map[string]string{"jeton": jeton})
+	if errs := c.SetPush("eu", "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0", "Cl3Secrete42"); errs != nil {
+		t.Fatal(errs)
+	}
+	if errs := c.SetSMTP(SMTPEntree{Hote: "smtp.gmail.com", Securite: "starttls", Utilisateur: "moi@gmail.com", MotDePasse: "mdpappli", De: "moi@gmail.com"}); errs != nil {
+		t.Fatal(errs)
+	}
+	data, err := c.Exporter("ma phrase de passe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(data, []byte("mdpappli")) || bytes.Contains(data, []byte("Cl3Secrete42")) {
+		t.Fatal("secret lisible dans l'export")
+	}
+	imp, err := LireExport(data, "ma phrase de passe")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Sur un autre PC, avec déjà des réglages : tout est remplacé.
+	var autre Config
+	if err := autre.Appliquer(imp); err != nil {
+		t.Fatal(err)
+	}
+	if k, _ := autre.PushCle(); k != "Cl3Secrete42" || autre.Push.Region != "eu" {
+		t.Errorf("push : %+v %q", autre.Push, k)
+	}
+	if m, _ := autre.SMTPMotDePasse(); m != "mdpappli" || !autre.Invitations {
+		t.Errorf("smtp : %q", m)
+	}
+
+	// Un fichier d'avant la v0.8 n'efface pas les services configurés ici.
+	imp.Push, imp.SMTP = nil, nil
+	if err := autre.Appliquer(imp); err != nil || autre.Push == nil || autre.SMTP == nil {
+		t.Errorf("services effacés par un ancien fichier : %v", err)
+	}
+}

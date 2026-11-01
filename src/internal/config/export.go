@@ -32,6 +32,18 @@ type Importe struct {
 	Fournisseur  string            `json:"fournisseur,omitempty"`  // absent avant la v0.6 : DuckDNS
 	Identifiants map[string]string `json:"identifiants,omitempty"` // v0.6
 	Jeton        string            `json:"jeton,omitempty"`        // DuckDNS, lu par les versions précédentes
+
+	// v0.8 : services de Vaultwarden (absents des fichiers plus anciens)
+	Push        *PushExport `json:"push,omitempty"`
+	SMTP        *SMTPEntree `json:"smtp,omitempty"`
+	Invitations bool        `json:"invitations,omitempty"`
+}
+
+// PushExport : la synchronisation instantanée, clé en clair dans le fichier chiffré.
+type PushExport struct {
+	Region string `json:"region"`
+	ID     string `json:"id"`
+	Cle    string `json:"cle"`
 }
 
 // Exporter produit le fichier de réglages chiffré par la phrase de passe.
@@ -49,6 +61,21 @@ func (c *Config) Exporter(phrase string) ([]byte, error) {
 	imp := Importe{Domaine: c.Domaine, Email: c.Email, Fournisseur: c.FournisseurDNS(), Identifiants: ids}
 	if imp.Fournisseur == dnsprov.DuckDNS {
 		imp.Jeton = ids["jeton"]
+	}
+	imp.Invitations = c.Invitations
+	if c.Push != nil {
+		cle, err := c.PushCle()
+		if err != nil {
+			return nil, err
+		}
+		imp.Push = &PushExport{Region: c.Push.Region, ID: c.Push.ID, Cle: cle}
+	}
+	if m := c.SMTP; m != nil {
+		mdp, err := c.SMTPMotDePasse()
+		if err != nil {
+			return nil, err
+		}
+		imp.SMTP = &SMTPEntree{Hote: m.Hote, Port: m.Port, Securite: m.Securite, Utilisateur: m.Utilisateur, MotDePasse: mdp, De: m.De}
 	}
 	clair, err := json.Marshal(imp)
 	if err != nil {
@@ -88,4 +115,36 @@ func LireExport(data []byte, phrase string) (Importe, error) {
 	}
 	imp.Identifiants = propres
 	return imp, nil
+}
+
+// Appliquer recopie un fichier importé dans c : tout est validé et rechiffré
+// avec DPAPI pour ce compte Windows avant d'être écrit. En cas d'erreur, c
+// n'est pas modifié.
+func (c *Config) Appliquer(imp Importe) error {
+	var n Config
+	if errs := n.SetIdentifiants(imp.Fournisseur, imp.Identifiants); len(errs) > 0 {
+		return errors.New("identifiants DNS invalides dans le fichier")
+	}
+	if p := imp.Push; p != nil {
+		if errs := n.SetPush(p.Region, p.ID, p.Cle); len(errs) > 0 {
+			return errors.New("synchronisation instantanée invalide dans le fichier")
+		}
+	}
+	if m := imp.SMTP; m != nil {
+		if errs := n.SetSMTP(*m); len(errs) > 0 {
+			return errors.New("réglages d'e-mails invalides dans le fichier")
+		}
+	}
+	c.Domaine, c.Email = imp.Domaine, imp.Email
+	c.Fournisseur, c.IdentifiantsChiffres, c.JetonChiffre = n.Fournisseur, n.IdentifiantsChiffres, nil
+	// Les services ne sont remplacés que si le fichier les contient (un fichier
+	// d'avant la v0.8 ne doit pas effacer ceux déjà configurés ici).
+	if imp.Push != nil {
+		c.Push = n.Push
+	}
+	if imp.SMTP != nil {
+		c.SMTP = n.SMTP
+		c.Invitations = imp.Invitations
+	}
+	return nil
 }

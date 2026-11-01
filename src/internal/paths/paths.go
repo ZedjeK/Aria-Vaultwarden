@@ -1,9 +1,14 @@
 // Package paths centralise les emplacements d'Aria Vault.
 //
-// Tout vit dans %LOCALAPPDATA%\AriaVault, propre au compte Windows :
-// Aria tourne avec les droits de l'utilisateur, jamais en administrateur.
-// Jusqu'à la v0.3 (sous le nom Aria Vaultwarden), le dossier s'appelait
-// AriaVaultwarden : il est renommé automatiquement au premier lancement.
+// Depuis la v0.8, ce qui compte (le coffre, les certificats, les réglages, le
+// journal) vit dans %USERPROFILE%\.Aria-Vault, et ce qui se recrée tout seul
+// (Vaultwarden extrait, cache de l'interface, fichier de relève) reste dans
+// %LOCALAPPDATA%\AriaVault. Les deux sont propres au compte Windows : Aria
+// tourne avec les droits de l'utilisateur, jamais en administrateur.
+//
+// Migrations automatiques au lancement :
+//   - v0.3 et avant : %LOCALAPPDATA%\AriaVaultwarden → %LOCALAPPDATA%\AriaVault ;
+//   - v0.7 et avant : données de %LOCALAPPDATA%\AriaVault → %USERPROFILE%\.Aria-Vault.
 package paths
 
 import (
@@ -16,7 +21,8 @@ import (
 
 // Paths regroupe les dossiers et fichiers utilisés par Aria.
 type Paths struct {
-	Base        string // %LOCALAPPDATA%\AriaVault
+	Base        string // %USERPROFILE%\.Aria-Vault : données de l'utilisateur
+	Cache       string // %LOCALAPPDATA%\AriaVault : ce qui se recrée tout seul
 	Moteur      string // vaultwarden.exe et web-vault, réextraits à chaque démarrage
 	Donnees     string // le coffre : base SQLite, clés RSA, pièces jointes
 	Certificats string // certificat Let's Encrypt et compte ACME
@@ -24,8 +30,9 @@ type Paths struct {
 }
 
 const (
-	Dossier       = "AriaVault"
-	AncienDossier = "AriaVaultwarden" // v0.3 et avant
+	Dossier        = "AriaVault"       // cache, dans %LOCALAPPDATA%
+	AncienDossier  = "AriaVaultwarden" // v0.3 et avant
+	DossierDonnees = ".Aria-Vault"     // données, dans %USERPROFILE% (v0.8)
 )
 
 // Racine renvoie le dossier parent (%LOCALAPPDATA% sous Windows).
@@ -87,15 +94,76 @@ func MemeDisque(a, b string) bool {
 	return va != "" && strings.EqualFold(va, vb)
 }
 
-// In construit les emplacements à partir d'un dossier de base.
-func In(base string) Paths {
+// In construit les emplacements quand données et cache partagent un dossier
+// (v0.7 et avant, ou repli si le dossier du profil est inutilisable).
+func In(base string) Paths { return Avec(base, base) }
+
+// Avec construit les emplacements à partir du dossier des données et du cache.
+func Avec(base, cache string) Paths {
 	return Paths{
 		Base:        base,
-		Moteur:      filepath.Join(base, "moteur"),
+		Cache:       cache,
+		Moteur:      filepath.Join(cache, "moteur"),
 		Donnees:     filepath.Join(base, "data"),
 		Certificats: filepath.Join(base, "certificats"),
 		Config:      filepath.Join(base, "config.json"),
 	}
+}
+
+// Profil renvoie le dossier du profil Windows (%USERPROFILE%).
+func Profil() (string, error) { return os.UserHomeDir() }
+
+// aDeplacer : ce qui quitte le cache pour le dossier des données (v0.8).
+var aDeplacer = []string{"data", "certificats", "config.json", "aria.log", "aria.log.1", "fenetre.json", "data.restauration"}
+
+// Deplacer installe les données dans profil\.Aria-Vault, en y déplaçant celles
+// d'une version précédente rangées dans le cache. Le déplacement passe par un
+// dossier .Aria-Vault.migration renommé à la fin : une coupure en plein
+// milieu est reprise au lancement suivant, et rien n'est jamais supprimé.
+// En cas d'échec (autre disque, fichier verrouillé), les éléments déjà
+// déplacés reviennent et Aria continue dans le cache.
+func Deplacer(profil string, cache Paths) (Paths, string, error) {
+	nouveau := filepath.Join(profil, DossierDonnees)
+	if profil == "" || SurOneDrive(nouveau) {
+		// Une base SQLite synchronisée pendant qu'elle tourne se corrompt.
+		return cache, "", fmt.Errorf("%s est synchronisé par OneDrive : les données restent dans %s", nouveau, cache.Base)
+	}
+	if existe(nouveau) {
+		return Avec(nouveau, cache.Base), "", nil
+	}
+
+	elements := append([]string(nil), aDeplacer...)
+	anciens, _ := filepath.Glob(filepath.Join(cache.Base, "data.avant-restauration-*"))
+	for _, a := range anciens {
+		elements = append(elements, filepath.Base(a))
+	}
+
+	etape := nouveau + ".migration"
+	if err := os.MkdirAll(etape, 0o700); err != nil {
+		return cache, "", fmt.Errorf("création de %s impossible, les données restent dans %s : %w", nouveau, cache.Base, err)
+	}
+	var deplaces []string
+	for _, e := range elements {
+		src, dst := filepath.Join(cache.Base, e), filepath.Join(etape, e)
+		if !existe(src) || existe(dst) {
+			continue
+		}
+		if err := os.Rename(src, dst); err != nil {
+			for _, d := range deplaces { // retour en arrière
+				_ = os.Rename(filepath.Join(etape, d), filepath.Join(cache.Base, d))
+			}
+			_ = os.Remove(etape) // seulement s'il est vide
+			return cache, "", fmt.Errorf("déplacement de %s vers %s impossible, les données restent dans %s : %w", e, nouveau, cache.Base, err)
+		}
+		deplaces = append(deplaces, e)
+	}
+	if err := os.Rename(etape, nouveau); err != nil {
+		return cache, "", fmt.Errorf("finalisation de %s impossible (reprise au prochain lancement) : %w", nouveau, err)
+	}
+	if len(deplaces) == 0 {
+		return Avec(nouveau, cache.Base), "", nil // première installation
+	}
+	return Avec(nouveau, cache.Base), fmt.Sprintf("Données d'Aria déplacées : %s → %s", cache.Base, nouveau), nil
 }
 
 // Existant renvoie p, ou son plus proche parent qui existe ("" si aucun).

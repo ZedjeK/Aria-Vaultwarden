@@ -129,7 +129,7 @@ func (m *Moteur) run(ctx context.Context, gen int, cfg *config.Config, dns dnspr
 
 	m.j.Add(journal.Info, "Démarrage du coffre pour %s", cfg.Domaine)
 	vw := vaultwarden.New(m.p.Moteur, m.p.Donnees)
-	opts := vaultwarden.Options{Domaine: cfg.Domaine, Port: PortLocal, Inscriptions: cfg.Inscriptions}
+	opts := m.optionsVW(cfg)
 	if err := vw.Start(opts, m.j.Logf); err != nil {
 		m.fail(gen, "Vaultwarden : %v", err)
 		return
@@ -178,6 +178,29 @@ func (m *Moteur) run(ctx context.Context, gen int, cfg *config.Config, dns dnspr
 	}
 	proxy.Stop()
 	vw.Stop()
+}
+
+// optionsVW traduit les réglages d'Aria pour Vaultwarden. Un service dont le
+// secret est illisible est désactivé (et signalé) plutôt que d'empêcher le
+// coffre de démarrer.
+func (m *Moteur) optionsVW(cfg *config.Config) vaultwarden.Options {
+	opts := vaultwarden.Options{Domaine: cfg.Domaine, Port: PortLocal, Inscriptions: cfg.Inscriptions, Invitations: cfg.Invitations}
+	if cfg.Push != nil {
+		if cle, err := cfg.PushCle(); err != nil {
+			m.j.Add(journal.Erreur, "Synchronisation instantanée désactivée : %v", err)
+		} else {
+			uris := config.RegionsPush[cfg.Push.Region]
+			opts.Push = &vaultwarden.Push{ID: cfg.Push.ID, Cle: cle, RelayURI: uris[0], IdentityURI: uris[1]}
+		}
+	}
+	if s := cfg.SMTP; s != nil {
+		if mdp, err := cfg.SMTPMotDePasse(); err != nil {
+			m.j.Add(journal.Erreur, "E-mails désactivés : %v", err)
+		} else {
+			opts.SMTP = &vaultwarden.SMTP{Hote: s.Hote, Port: s.Port, Securite: s.Securite, Utilisateur: s.Utilisateur, MotDePasse: mdp, De: s.De}
+		}
+	}
+	return opts
 }
 
 func (m *Moteur) setDetail(gen int, detail string) {

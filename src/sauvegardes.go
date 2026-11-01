@@ -387,20 +387,20 @@ func (s *VaultService) ImportSettings(phrase string) ImportResult {
 	if err != nil {
 		return ImportResult{Error: err.Error()}
 	}
-	// Les identifiants sont validés et rechiffrés (DPAPI, pour ce compte) avant
-	// toute écriture : rien n'est modifié en cas d'erreur.
-	var nouvelle config.Config
-	if errs := nouvelle.SetIdentifiants(imp.Fournisseur, imp.Identifiants); len(errs) > 0 {
-		return ImportResult{Error: "identifiants DNS invalides dans le fichier"}
-	}
-	err = s.majConfig(func(c *config.Config) {
-		c.Domaine, c.Email = imp.Domaine, imp.Email
-		c.Fournisseur, c.IdentifiantsChiffres, c.JetonChiffre = nouvelle.Fournisseur, nouvelle.IdentifiantsChiffres, nil
+	// Tout est validé et rechiffré (DPAPI, pour ce compte) avant d'être écrit :
+	// rien n'est modifié en cas d'erreur.
+	var errApp error
+	err = s.majConfigSi(func(c *config.Config) bool {
+		errApp = c.Appliquer(imp)
+		return errApp == nil
 	})
+	if err == nil {
+		err = errApp
+	}
 	if err != nil {
 		return ImportResult{Error: err.Error()}
 	}
-	s.j.Add(journal.OK, "Réglages importés pour %s, identifiants DNS compris", imp.Domaine)
+	s.j.Add(journal.OK, "Réglages importés pour %s, identifiants DNS compris%s", imp.Domaine, servicesImportes(imp))
 	s.demander(s.verifierIP)
 	if err := s.relancerSiActif(); err != nil {
 		return ImportResult{Domaine: imp.Domaine, Error: err.Error()}
@@ -436,4 +436,16 @@ func taille(n int64) string {
 		return fmt.Sprintf("%.0f Ko", float64(n)/(1<<10))
 	}
 	return fmt.Sprintf("%d o", n)
+}
+
+func servicesImportes(imp config.Importe) string {
+	switch {
+	case imp.Push != nil && imp.SMTP != nil:
+		return ", avec la synchronisation instantanée et les e-mails"
+	case imp.Push != nil:
+		return ", avec la synchronisation instantanée"
+	case imp.SMTP != nil:
+		return ", avec les e-mails"
+	}
+	return ""
 }

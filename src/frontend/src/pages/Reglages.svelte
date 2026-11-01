@@ -160,7 +160,7 @@
     <section class="card">
       <h2>Raccourcis clavier</h2>
       <div class="raccourcis">
-        <span><kbd>Ctrl</kbd> <kbd>1</kbd> … <kbd>5</kbd></span><span>Accueil, HTTPS, Sauvegardes, Réglages, Journal</span>
+        <span><kbd>Ctrl</kbd> <kbd>1</kbd> … <kbd>6</kbd></span><span>Accueil, HTTPS, Services, Sauvegardes, Réglages, Journal</span>
         <span><kbd>Ctrl</kbd> <kbd>S</kbd></span><span>Sauvegarder le coffre maintenant</span>
         <span><kbd>Ctrl</kbd> <kbd>R</kbd> ou <kbd>F5</kbd></span><span>Actualiser l'état</span>
       </div>

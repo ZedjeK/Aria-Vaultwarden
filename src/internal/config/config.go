@@ -34,6 +34,11 @@ type Config struct {
 	SauvegardesChiffrees bool      `json:"sauvegardesChiffrees,omitempty"`
 	PhraseChiffree       []byte    `json:"phraseSauvegardes,omitempty"` // DPAPI
 
+	// Services de Vaultwarden (v0.8)
+	Push        *Push `json:"push,omitempty"` // synchronisation instantanée des téléphones
+	SMTP        *SMTP `json:"smtp,omitempty"` // e-mails
+	Invitations bool  `json:"invitations,omitempty"`
+
 	// Divers
 	SansVerifMaj   bool `json:"sansVerifMaj,omitempty"`   // vérification quotidienne des nouvelles versions
 	EmpecherVeille bool `json:"empecherVeille,omitempty"` // le PC ne se met pas en veille tant que le serveur tourne

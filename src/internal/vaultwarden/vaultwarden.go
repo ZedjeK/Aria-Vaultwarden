@@ -54,6 +54,21 @@ type Options struct {
 	Domaine      string // vault.exemple.duckdns.org
 	Port         int    // port local, sur 127.0.0.1 uniquement
 	Inscriptions bool   // autorise la création de comptes
+	Invitations  bool   // les organisations peuvent inviter de nouveaux comptes
+	Push         *Push  // notifications push (nil = désactivées)
+	SMTP         *SMTP  // e-mails (nil = désactivés)
+}
+
+// Push : relais de notifications de Bitwarden.
+type Push struct {
+	ID, Cle               string
+	RelayURI, IdentityURI string // vides = région US (valeurs par défaut)
+}
+
+// SMTP : serveur d'envoi des e-mails.
+type SMTP struct {
+	Hote, Securite, Utilisateur, MotDePasse, De string
+	Port                                        int
 }
 
 // Server pilote le processus vaultwarden.exe.
@@ -228,10 +243,30 @@ func environment(donnees, webVault string, opts Options) []string {
 		"ROCKET_PORT":         strconv.Itoa(opts.Port),
 		"DOMAIN":              "https://" + opts.Domaine,
 		"SIGNUPS_ALLOWED":     strconv.FormatBool(opts.Inscriptions),
-		"INVITATIONS_ALLOWED": "false",
+		"INVITATIONS_ALLOWED": strconv.FormatBool(opts.Invitations),
 		"LOG_FILE":            filepath.Join(donnees, "vaultwarden.log"),
 		"LOG_LEVEL":           "info",
 		"EXTENDED_LOGGING":    "true",
+	}
+	if p := opts.Push; p != nil {
+		set["PUSH_ENABLED"] = "true"
+		set["PUSH_INSTALLATION_ID"] = p.ID
+		set["PUSH_INSTALLATION_KEY"] = p.Cle
+		if p.RelayURI != "" {
+			set["PUSH_RELAY_URI"] = p.RelayURI
+			set["PUSH_IDENTITY_URI"] = p.IdentityURI
+		}
+	}
+	if m := opts.SMTP; m != nil {
+		set["SMTP_HOST"] = m.Hote
+		set["SMTP_PORT"] = strconv.Itoa(m.Port)
+		set["SMTP_SECURITY"] = m.Securite
+		set["SMTP_FROM"] = m.De
+		set["SMTP_FROM_NAME"] = "Aria Vault"
+		if m.Utilisateur != "" {
+			set["SMTP_USERNAME"] = m.Utilisateur
+			set["SMTP_PASSWORD"] = m.MotDePasse
+		}
 	}
 	var env []string
 	for _, kv := range os.Environ() {

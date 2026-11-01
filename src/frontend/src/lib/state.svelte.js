@@ -92,6 +92,24 @@ export async function installUpdate() {
 }
 export const setEmpecherVeille = (on) => run(() => call('SetEmpecherVeille', on))
 
+// Synchronisation instantanée et e-mails
+async function saveForm(method, input) {
+  const res = await run(() => call(method, input))
+  if (res?.error) app.error = res.error
+  return res ?? { error: app.error }
+}
+export const savePush = (input) => saveForm('SavePush', input)
+export const saveSMTP = (input) => saveForm('SaveSMTP', input)
+export const disablePush = () => run(() => call('DisablePush'))
+export const disableSMTP = () => run(() => call('DisableSMTP'))
+export const setInvitations = (on) => run(() => call('SetInvitations', on))
+export async function testSMTP(destinataire) {
+  return run(async () => {
+    await call('TestSMTP', destinataire)
+    return true
+  })
+}
+
 // Les liens des tutoriels s'ouvrent dans le navigateur, sans bloquer l'interface.
 export async function openLink(url) {
   try {

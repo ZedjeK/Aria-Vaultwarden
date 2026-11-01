@@ -71,6 +71,9 @@ type View struct {
 	IP             ipdyn.Etat    `json:"ip"`
 	VerifMaj       bool          `json:"verifMaj"`
 	Maj            maj.Info      `json:"maj"`
+	Push           PushView      `json:"push"`
+	SMTP           SMTPView      `json:"smtp"`
+	Invitations    bool          `json:"invitations"`
 	EmpecherVeille bool          `json:"empecherVeille"`
 	VeilleBloquee  bool          `json:"veilleBloquee"` // en ce moment
 	Version        string        `json:"version"`
@@ -100,6 +103,7 @@ func (s *VaultService) Status() View {
 		v.Fournisseur, v.Domaine, v.Email, v.Inscriptions = cfg.FournisseurDNS(), cfg.Domaine, cfg.Email, cfg.Inscriptions
 		v.Identifiants = cfg.AIdentifiants()
 		v.IPAuto, v.VerifMaj, v.EmpecherVeille = !cfg.SansIPAuto, !cfg.SansVerifMaj, cfg.EmpecherVeille
+		v.Push, v.SMTP, v.Invitations = vuePush(cfg), vueSMTP(cfg), cfg.Invitations
 	}
 	if s.app != nil {
 		v.Autostart, _ = s.app.Autostart.IsEnabled()
@@ -259,7 +263,7 @@ func (s *VaultService) OpenLink(url string) error {
 			}
 		}
 	}
-	for _, l := range liensBox {
+	for _, l := range liensConnus {
 		if l == url {
 			return s.app.Browser.OpenURL(url)
 		}
@@ -267,11 +271,14 @@ func (s *VaultService) OpenLink(url string) error {
 	return errors.New("lien inconnu")
 }
 
-// Interfaces d'administration des box, ouvertes depuis le tutoriel de réservation d'IP.
-var liensBox = []string{
+// Liens des autres tutoriels : interfaces des box (réservation d'IP), relais
+// push de Bitwarden, mots de passe d'application Google.
+var liensConnus = []string{
 	"http://mafreebox.freebox.fr",
 	"http://192.168.1.1",
 	"https://mabbox.bytel.fr",
+	"https://bitwarden.com/host/",
+	"https://myaccount.google.com/apppasswords",
 }
 
 // relancerSiActif applique un réglage en relançant le coffre s'il tourne.
@@ -437,7 +444,7 @@ func (s *VaultService) InstallUpdate() error {
 			s.app.Event.Emit("maj-progression", pct)
 		}
 	}
-	zip, err := s.maj.Telecharger(context.Background(), info, filepath.Join(s.p.Base, "maj"), progression)
+	zip, err := s.maj.Telecharger(context.Background(), info, filepath.Join(s.p.Cache, "maj"), progression)
 	if err != nil {
 		s.j.Add(journal.Erreur, "Mise à jour : %v", err)
 		return err

@@ -58,10 +58,18 @@ func main() {
 	// 1. Une version plus ancienne encore lancée laisse la place (avant tout
 	//    accès au dossier, qu'elle peut encore tenir ouvert).
 	releves := releve.Reprendre(filepath.Join(racine, paths.Dossier), version)
-	// 2. Ancien dossier AriaVaultwarden renommé en AriaVault si besoin.
-	p, migration, errMigration := paths.Migrer(racine)
-	if err := os.MkdirAll(p.Base, 0o700); err != nil {
-		log.Fatal(err)
+	// 2. Ancien dossier AriaVaultwarden renommé en AriaVault si besoin (cache).
+	cache, migration, errMigration := paths.Migrer(racine)
+	// 3. Données d'une version précédente déplacées vers %USERPROFILE%\.Aria-Vault.
+	profil, errProfil := paths.Profil()
+	if errProfil != nil {
+		profil = ""
+	}
+	p, deplacement, errDeplacement := paths.Deplacer(profil, cache)
+	for _, d := range []string{p.Base, p.Cache} {
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			log.Fatal(err)
+		}
 	}
 	j := journal.New(filepath.Join(p.Base, "aria.log"))
 	if silencieux {
@@ -78,7 +86,13 @@ func main() {
 	if errMigration != nil {
 		j.Add(journal.Erreur, "%v", errMigration)
 	}
-	// 3. Une restauration coupée en plein milieu (panne, plantage) est terminée.
+	if deplacement != "" {
+		j.Add(journal.OK, "%s", deplacement)
+	}
+	if errDeplacement != nil {
+		j.Add(journal.Erreur, "%v", errDeplacement)
+	}
+	// 4. Une restauration coupée en plein milieu (panne, plantage) est terminée.
 	if msg, err := sauvegarde.Reparer(p.Donnees); err != nil {
 		j.Add(journal.Erreur, "%v", err)
 	} else if msg != "" {
@@ -121,7 +135,7 @@ func main() {
 		Windows: application.WindowsOptions{
 			DisableQuitOnLastWindowClosed: true,
 			// Profil WebView2 rangé avec le reste, quel que soit le nom de l'exe.
-			WebviewUserDataPath: filepath.Join(p.Base, "webview"),
+			WebviewUserDataPath: filepath.Join(p.Cache, "webview"),
 		},
 		OnShutdown: func() {
 			arreter()
@@ -130,7 +144,7 @@ func main() {
 			defer svc.svgMu.Unlock()
 			svc.moteur.Stop()
 			_ = eveil.Regler(false)
-			releve.Effacer(p.Base)
+			releve.Effacer(p.Cache)
 		},
 	})
 	svc.app = app
@@ -146,7 +160,7 @@ func main() {
 			j.Add(journal.Info, "%s", msg)
 		}
 	}
-	if err := releve.Enregistrer(p.Base, version); err != nil {
+	if err := releve.Enregistrer(p.Cache, version); err != nil {
 		j.Add(journal.Erreur, "instance.json : %v", err)
 	}
 	if err := releve.EcouterFermeture(func() {

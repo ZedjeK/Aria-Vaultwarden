@@ -66,6 +66,19 @@
           },
         ]
       : []),
+    ...(configure
+      ? [
+          {
+            id: 'services',
+            page: 'services',
+            tag: st?.push?.actif || st?.smtp?.actif ? 'ok' : 'off',
+            name: 'services',
+            detail:
+              [st?.push?.actif && 'synchro instantanée', st?.smtp?.actif && 'e-mails'].filter(Boolean).join(' · ') ||
+              'synchro instantanée et e-mails : désactivés',
+          },
+        ]
+      : []),
     {
       id: 'version',
       page: 'reglages',
@@ -185,7 +198,7 @@
   <section class="card journal-card" aria-label="Derniers événements">
     <div class="card-head">
       <h2>Derniers événements</h2>
-      <button class="btn-ghost small" onclick={() => (app.page = 'journal')} title="Ouvrir le journal (Ctrl+5)">Tout voir →</button>
+      <button class="btn-ghost small" onclick={() => (app.page = 'journal')} title="Ouvrir le journal (Ctrl+6)">Tout voir →</button>
     </div>
     {#if extrait.length}
       <ol class="log mini">

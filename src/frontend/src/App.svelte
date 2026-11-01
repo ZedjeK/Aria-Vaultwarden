@@ -10,11 +10,13 @@
   import Https from './pages/Https.svelte'
   import Reglages from './pages/Reglages.svelte'
   import Sauvegardes from './pages/Sauvegardes.svelte'
+  import Services from './pages/Services.svelte'
   import Journal from './pages/Journal.svelte'
 
   const nav = [
     { id: 'home', label: 'Accueil', cmd: 'accueil', icon: 'home' },
     { id: 'https', label: 'HTTPS', cmd: 'https', icon: 'lock' },
+    { id: 'services', label: 'Services', cmd: 'services', icon: 'services' },
     { id: 'sauvegardes', label: 'Sauvegardes', cmd: 'sauvegardes', icon: 'backup' },
     { id: 'reglages', label: 'Réglages', cmd: 'réglages', icon: 'settings' },
     { id: 'journal', label: 'Journal', cmd: 'journal', icon: 'journal' },
@@ -49,11 +51,11 @@
     if (id === 'sauvegardes') loadBackups()
   }
 
-  // Raccourcis clavier : Ctrl+1…5 pour les pages, Ctrl+S pour sauvegarder,
+  // Raccourcis clavier : Ctrl+1…6 pour les pages, Ctrl+S pour sauvegarder,
   // Ctrl+R ou F5 pour actualiser l'état (au lieu de recharger l'interface).
   function clavier(e) {
     const ctrl = e.ctrlKey || e.metaKey
-    if (ctrl && !e.shiftKey && !e.altKey && /^[1-5]$/.test(e.key)) {
+    if (ctrl && !e.shiftKey && !e.altKey && /^[1-6]$/.test(e.key)) {
       e.preventDefault()
       aller(nav[Number(e.key) - 1].id)
     } else if (ctrl && e.key.toLowerCase() === 's') {
@@ -181,6 +183,8 @@
       <Home />
     {:else if app.page === 'https'}
       <Https />
+    {:else if app.page === 'services'}
+      <Services />
     {:else if app.page === 'sauvegardes'}
       <Sauvegardes />
     {:else if app.page === 'reglages'}

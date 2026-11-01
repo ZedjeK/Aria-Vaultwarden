@@ -98,3 +98,45 @@ func TestEnvironment(t *testing.T) {
 		t.Errorf("ROCKET_ADDRESS = %q, Vaultwarden ne doit écouter qu'en local", v)
 	}
 }
+
+func TestEnvironmentServices(t *testing.T) {
+	get := func(env []string, k string) string {
+		for _, kv := range env {
+			if key, val, _ := strings.Cut(kv, "="); key == k {
+				return val
+			}
+		}
+		return ""
+	}
+	t.Setenv("PUSH_ENABLED", "true") // hérité de la session : ignoré
+	sans := environment("D", "W", Options{Domaine: "v.exemple.fr", Port: 8000})
+	for _, k := range []string{"PUSH_ENABLED", "SMTP_HOST", "SMTP_PASSWORD"} {
+		if get(sans, k) != "" {
+			t.Errorf("%s présent sans service configuré", k)
+		}
+	}
+	if get(sans, "INVITATIONS_ALLOWED") != "false" {
+		t.Error("invitations ouvertes par défaut")
+	}
+
+	avec := environment("D", "W", Options{
+		Domaine: "v.exemple.fr", Port: 8000, Invitations: true,
+		Push: &Push{ID: "id", Cle: "cle", RelayURI: "https://api.bitwarden.eu", IdentityURI: "https://identity.bitwarden.eu"},
+		SMTP: &SMTP{Hote: "smtp.gmail.com", Port: 587, Securite: "starttls", Utilisateur: "moi@gmail.com", MotDePasse: "mdp", De: "moi@gmail.com"},
+	})
+	for k, want := range map[string]string{
+		"PUSH_ENABLED": "true", "PUSH_INSTALLATION_ID": "id", "PUSH_INSTALLATION_KEY": "cle",
+		"PUSH_RELAY_URI": "https://api.bitwarden.eu", "PUSH_IDENTITY_URI": "https://identity.bitwarden.eu",
+		"SMTP_HOST": "smtp.gmail.com", "SMTP_PORT": "587", "SMTP_SECURITY": "starttls", "SMTP_FROM": "moi@gmail.com",
+		"SMTP_USERNAME": "moi@gmail.com", "SMTP_PASSWORD": "mdp", "INVITATIONS_ALLOWED": "true",
+	} {
+		if got := get(avec, k); got != want {
+			t.Errorf("%s = %q, attendu %q", k, got, want)
+		}
+	}
+	// Région US : adresses par défaut de Vaultwarden.
+	us := environment("D", "W", Options{Domaine: "v.exemple.fr", Port: 8000, Push: &Push{ID: "id", Cle: "cle"}})
+	if get(us, "PUSH_RELAY_URI") != "" {
+		t.Error("adresse du relais forcée pour la région US")
+	}
+}
