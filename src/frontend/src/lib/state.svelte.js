@@ -13,6 +13,7 @@ export const app = $state({
   journal: [],
   backups: null, // page Sauvegardes
   fournisseurs: [], // fournisseurs DNS et leurs tutoriels
+  installation: null, // null, ou pourcentage téléchargé de la mise à jour
 })
 
 export async function loadFournisseurs() {
@@ -76,6 +77,19 @@ export const checkIP = () => run(() => call('CheckIP'))
 export const setVerifMaj = (on) => run(() => call('SetVerifMaj', on))
 export const checkUpdate = () => run(() => call('CheckUpdate'))
 export const openRelease = () => run(() => call('OpenRelease'))
+
+// Installe la nouvelle version : téléchargement vérifié, remplacement de l'exe,
+// puis la nouvelle version prend le relais et cette fenêtre se ferme.
+export async function installUpdate() {
+  app.installation = 0
+  const ok = await run(async () => {
+    await call('InstallUpdate')
+    return true
+  })
+  if (!ok) app.installation = null
+  else app.installation = 100
+  return ok
+}
 export const setEmpecherVeille = (on) => run(() => call('SetEmpecherVeille', on))
 
 // Les liens des tutoriels s'ouvrent dans le navigateur, sans bloquer l'interface.

@@ -10,7 +10,7 @@
 param(
     [Parameter(Mandatory = $true)] [string] $Vaultwarden,
     [string] $VaultwardenVersion = '',
-    [string] $Version = '0.6.0'
+    [string] $Version = '0.7.0'
 )
 
 $ErrorActionPreference = 'Stop'

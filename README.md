@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.6 · Windows 10/11 x64 · licence MIT · <a href="docs/SIGNATURE.md">Code signing policy</a>
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.7 · Windows 10/11 x64 · licence MIT · <a href="docs/SIGNATURE.md">Code signing policy</a>
 </p>
 
 ## Ce qu'il fait
@@ -24,7 +24,7 @@
 | **Zone de notification** | Démarre en silence à l'ouverture de session. L'icône s'allume quand le coffre est en ligne, le clic droit ouvre le menu |
 | **Sauvegardes** | En un clic ou chaque jour, chiffrées par une phrase de passe si tu veux, les 10 dernières sont gardées. Une restauration ne supprime jamais rien, et une restauration coupée par une panne se termine au lancement suivant |
 | **Réglages exportables** | Fournisseur, domaine et identifiants dans un fichier `.ariavault` chiffré par ta phrase de passe, pour réinstaller ailleurs sans rien ressaisir |
-| **Mises à jour** | Aria te prévient quand une nouvelle version sort. Lance-la : l'ancienne s'arrête proprement et lui laisse la place |
+| **Mises à jour** | Aria te dit si elle est à jour (accueil et menu de l'icône) et installe la nouvelle version en un clic : téléchargement depuis ce dépôt, empreintes SHA-256 vérifiées, relève automatique |
 | **Pas de veille** | En option, le PC ne s'endort pas tout seul tant que le coffre est en ligne |
 
 ## Avant de commencer
@@ -185,7 +185,8 @@ Page **Sauvegardes** → « Importer un ancien coffre… », puis choisis ton an
 - **Fermer la fenêtre** la renvoie dans la zone de notification : le coffre continue de servir ton téléphone.
 - **Clic droit sur l'icône** : ouvrir le coffre, sauvegarder, démarrer ou arrêter le serveur, quitter.
 - **Adresse IP** : Aria vérifie au démarrage puis toutes les 10 minutes que ton domaine pointe vers ce PC, et la corrige chez ton fournisseur si besoin (désactivable, page HTTPS). Seules les adresses de réseau local sont publiées.
-- **Mettre à jour** : quand une nouvelle version sort, un bandeau te le signale (vérification une fois par jour sur GitHub, désactivable dans Réglages ; rien n'est téléchargé tout seul). Télécharge-la et lance-la : l'ancienne termine ce qu'elle fait (sauvegarde en cours, arrêt du serveur), puis lui laisse la place. Une version plus ancienne ne prend jamais la place d'une plus récente.
+- **Mettre à jour** : une fois par jour, Aria regarde sur GitHub si une nouvelle version est sortie (désactivable dans Réglages). L'accueil et le menu de l'icône indiquent « à jour » ou la version disponible, et un bandeau propose **Installer**. Ce bouton télécharge le zip de la release depuis ce dépôt, vérifie son empreinte SHA-256 et celle de l'exe (celles publiées dans les notes et calculées par GitHub), remplace l'exe puis lance la nouvelle version. Rien n'est téléchargé sans ton clic, et en cas d'erreur rien n'est modifié. L'ancien exe est gardé en `.old` jusqu'au lancement suivant.
+- **À la main**, c'est pareil : lance la nouvelle version, l'ancienne termine ce qu'elle fait (sauvegarde en cours, arrêt du serveur), puis lui laisse la place. Une version plus ancienne ne prend jamais la place d'une plus récente.
 - **Veille** : en option (Réglages), le PC ne s'endort pas tout seul tant que le serveur tourne. L'écran peut toujours s'éteindre, et une mise en veille demandée (menu Démarrer, capot fermé) reste possible.
 
 ## Sauvegardes
@@ -220,7 +221,7 @@ Les versions 0.3 et précédentes (sous le nom Aria Vaultwarden) utilisaient `%L
 - **La vraie IP des clients est transmise à Vaultwarden**, et celle envoyée par un client est ignorée : son limiteur de tentatives de connexion fonctionne normalement.
 - **Rattaché à Aria** : si Aria se ferme ou plante, Windows arrête Vaultwarden avec elle.
 - **Identifiants DNS au plus juste** : les tutos créent des jetons limités à ta zone DNS quand le fournisseur le permet.
-- **Connexions réseau** : uniquement ton fournisseur DNS, Let's Encrypt, des résolveurs DNS publics et GitHub (vérification des mises à jour). Aucune télémétrie. Le détail est dans la [Code signing policy](docs/SIGNATURE.md#confidentialité).
+- **Connexions réseau** : uniquement ton fournisseur DNS, Let's Encrypt, des résolveurs DNS publics et GitHub (vérification des mises à jour, et téléchargement quand tu cliques sur « Installer »). Aucune télémétrie. Le détail est dans la [Code signing policy](docs/SIGNATURE.md#confidentialité).
 
 ### Limites à connaître
 
@@ -272,7 +273,7 @@ src/
 │   ├── sauvegarde/         # zip du coffre, chiffrement, rotation, restauration, reprise
 │   ├── chiffre/            # scrypt + AES-256-GCM, en un bloc ou en flux
 │   ├── config/             # réglages, identifiants chiffrés DPAPI, export .ariavault
-│   ├── maj/                # nouvelle version publiée sur GitHub ?
+│   ├── maj/                # nouvelle version publiée ? installation vérifiée en un clic
 │   ├── eveil/              # empêcher la mise en veille
 │   ├── releve/             # une nouvelle version prend la place de l'ancienne
 │   ├── demarrage/          # lancement à l'ouverture de session

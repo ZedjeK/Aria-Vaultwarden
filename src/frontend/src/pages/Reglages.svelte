@@ -2,7 +2,7 @@
   import Switch from '../lib/Switch.svelte'
   import {
     app, start, stop, setAutostart, setInscriptions, openData, setEmpecherVeille, setVerifMaj, checkUpdate, openRelease,
-    formatDateHeure,
+    installUpdate, formatDateHeure, formatTaille,
   } from '../lib/state.svelte.js'
 
   const st = $derived(app.status)
@@ -11,6 +11,16 @@
   const label = { actif: 'En ligne', demarrage: 'Démarrage…', erreur: 'Erreur', arrete: 'Arrêté' }
   const maj = $derived(st?.maj ?? {})
   let verifiee = $state(false)
+  let confirmer = $state(false)
+
+  async function installer() {
+    if (!confirmer) {
+      confirmer = true
+      return
+    }
+    confirmer = false
+    await installUpdate()
+  }
 
   async function verifier() {
     await checkUpdate()
@@ -120,16 +130,30 @@
         </div>
       {/if}
       {#if maj.erreur}<p class="hint warn-text">{maj.erreur}</p>{/if}
-      {#if maj.disponible}
+      {#if maj.disponible && maj.installable}
+        <p class="hint">
+          « Installer » télécharge le zip de la release ({formatTaille(maj.taille)}) depuis le dépôt officiel, vérifie ses
+          empreintes SHA-256, remplace l'exe puis lance la nouvelle version : elle prend le relais, ton coffre et tes réglages
+          sont conservés. L'ancien exe est gardé de côté jusqu'au lancement suivant.
+        </p>
+      {:else if maj.disponible}
         <p class="hint">Télécharge le zip de la nouvelle version et lance-la : elle prend le relais toute seule, ton coffre et tes réglages sont conservés.</p>
       {:else if verifiee && !maj.erreur}
         <p class="hint">Tu as la dernière version.</p>
       {/if}
+      {#if app.installation !== null}
+        <p class="hint">{app.installation < 100 ? `Téléchargement… ${app.installation} %` : 'Installée : la nouvelle version prend le relais.'}</p>
+      {/if}
       <div class="actions">
-        {#if maj.disponible}
-          <button class="btn-primary grow" onclick={openRelease} disabled={app.busy}>Voir la {maj.version}</button>
+        {#if maj.disponible && maj.installable}
+          <button class="btn-primary grow" onclick={installer} onblur={() => (confirmer = false)} disabled={app.busy}>
+            {app.installation !== null ? 'Installation…' : confirmer ? `Confirmer l'installation ?` : `Installer la ${maj.version}`}
+          </button>
         {/if}
-        <button class="btn-ghost grow" onclick={verifier} disabled={app.busy}>{app.busy ? 'Vérification…' : 'Vérifier maintenant'}</button>
+        {#if maj.disponible}
+          <button class="btn-ghost grow" onclick={openRelease} disabled={app.busy}>Nouveautés ↗</button>
+        {/if}
+        <button class="btn-ghost grow" onclick={verifier} disabled={app.busy}>{app.busy && app.installation === null ? 'Vérification…' : 'Vérifier'}</button>
       </div>
     </section>
   </div>

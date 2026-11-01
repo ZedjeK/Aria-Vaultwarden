@@ -1,6 +1,6 @@
 // Package maj regarde, une fois par jour, si une nouvelle version d'Aria Vault
-// a été publiée sur GitHub. Rien n'est téléchargé ni installé : l'interface
-// propose seulement d'ouvrir la page de la version.
+// a été publiée sur GitHub, et l'installe quand l'utilisateur le demande
+// (installer.go). Rien n'est jamais téléchargé ni installé sans son clic.
 package maj
 
 import (
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +22,9 @@ const (
 	Depot      = "ZedjeK/Aria-Vault"
 	api        = "https://api.github.com/repos/" + Depot + "/releases/latest"
 	pagePrefix = "https://github.com/" + Depot + "/releases/"
-	Intervalle = 24 * time.Hour
+	// Le zip ne peut venir que des releases du dépôt officiel.
+	telechargementPrefix = pagePrefix + "download/"
+	Intervalle           = 24 * time.Hour
 )
 
 // Info décrit la dernière version publiée.
@@ -31,13 +34,40 @@ type Info struct {
 	Disponible bool      `json:"disponible"` // plus récente que la version lancée
 	Verifie    time.Time `json:"verifie"`
 	Erreur     string    `json:"erreur"`
+
+	// Installation en un clic : zip de la release et empreintes publiées.
+	Installable bool   `json:"installable"`
+	Taille      int64  `json:"taille"`
+	Zip         string `json:"-"`
+	ZipSHA      string `json:"-"`
+	ExeSHA      string `json:"-"`
 }
 
 type release struct {
-	TagName    string `json:"tag_name"`
-	HTMLURL    string `json:"html_url"`
-	Draft      bool   `json:"draft"`
-	Prerelease bool   `json:"prerelease"`
+	TagName    string  `json:"tag_name"`
+	HTMLURL    string  `json:"html_url"`
+	Draft      bool    `json:"draft"`
+	Prerelease bool    `json:"prerelease"`
+	Body       string  `json:"body"`
+	Assets     []asset `json:"assets"`
+}
+
+type asset struct {
+	Name   string `json:"name"`
+	URL    string `json:"browser_download_url"`
+	Digest string `json:"digest"` // « sha256:… », calculé par GitHub
+	Size   int64  `json:"size"`
+}
+
+var shaRe = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+// empreinte cherche dans les notes la ligne « <sha256>  <nom> ».
+func empreinte(notes, nom string) string {
+	re := regexp.MustCompile(`(?m)^([0-9a-f]{64})\s+` + regexp.QuoteMeta(nom) + `(\s|$)`)
+	if m := re.FindStringSubmatch(notes); m != nil {
+		return m[1]
+	}
+	return ""
 }
 
 // Lire interprète la réponse de l'API GitHub. Seule une page de release du
@@ -57,7 +87,29 @@ func Lire(body []byte, actuelle string) (Info, error) {
 	if !strings.HasPrefix(r.HTMLURL, pagePrefix) || strings.ContainsAny(r.HTMLURL, " \"'<>") {
 		return Info{}, errors.New("lien de release inattendu")
 	}
-	return Info{Version: v, URL: r.HTMLURL, Disponible: releve.PlusRecente(v, actuelle)}, nil
+	info := Info{Version: v, URL: r.HTMLURL, Disponible: releve.PlusRecente(v, actuelle)}
+
+	// Installable seulement si le zip et les deux empreintes sont là et concordent.
+	nomZip := "Aria-Vault-" + v + ".zip"
+	for _, a := range r.Assets {
+		if a.Name != nomZip || !strings.HasPrefix(a.URL, telechargementPrefix+"v"+v+"/") {
+			continue
+		}
+		zipNotes := empreinte(r.Body, nomZip)
+		zipGitHub := strings.TrimPrefix(a.Digest, "sha256:")
+		zip := zipNotes
+		if zip == "" {
+			zip = zipGitHub
+		}
+		if zipGitHub != "" && zipNotes != "" && zipGitHub != zipNotes {
+			break // empreintes discordantes : on n'installe pas
+		}
+		exe := empreinte(r.Body, "Aria-Vault.exe")
+		if shaRe.MatchString(zip) && shaRe.MatchString(exe) && a.Size > 0 && a.Size <= TailleMax {
+			info.Installable, info.Zip, info.ZipSHA, info.ExeSHA, info.Taille = true, a.URL, zip, exe, a.Size
+		}
+	}
+	return info, nil
 }
 
 // Verificateur garde le dernier résultat.

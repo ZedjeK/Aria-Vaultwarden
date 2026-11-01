@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -39,6 +42,9 @@ type VaultService struct {
 	verifierIP     chan struct{} // demande une vérification de l'IP tout de suite
 	verifierMaj    chan struct{}
 	empecherVeille atomic.Bool
+
+	installMu sync.Mutex // une seule installation de mise à jour à la fois
+	onMaj     func()     // appelé quand l'état des mises à jour change (icône)
 }
 
 func nouveauService(p paths.Paths, j *journal.Journal) *VaultService {
@@ -375,6 +381,7 @@ func (s *VaultService) SetVerifMaj(on bool) error {
 		s.demander(s.verifierMaj)
 	} else {
 		s.maj.Oublier()
+		s.signalerMaj()
 		s.j.Add(journal.Info, "Vérification des mises à jour désactivée")
 	}
 	return nil
@@ -386,7 +393,75 @@ func (s *VaultService) CheckUpdate() (maj.Info, error) {
 	if err == nil {
 		s.annoncerMaj(info)
 	}
+	s.signalerMaj()
 	return info, err
+}
+
+func (s *VaultService) signalerMaj() {
+	if s.onMaj != nil {
+		s.onMaj()
+	}
+}
+
+// InstallUpdate télécharge la nouvelle version, vérifie ses empreintes SHA-256,
+// remplace l'exe puis la lance : elle prend le relais (paquet releve) et
+// celle-ci se ferme. En cas d'échec, rien n'est modifié.
+func (s *VaultService) InstallUpdate() error {
+	if !s.installMu.TryLock() {
+		return errors.New("installation déjà en cours")
+	}
+	defer s.installMu.Unlock()
+
+	info := s.maj.Info()
+	switch {
+	case version == "dev":
+		return errors.New("version de développement : installe la nouvelle version à la main")
+	case !info.Disponible:
+		return errors.New("aucune nouvelle version à installer")
+	case !info.Installable:
+		return errors.New("cette version ne s'installe pas automatiquement : ouvre sa page pour la télécharger")
+	}
+	exe, err := executable()
+	if err != nil {
+		return err
+	}
+
+	s.j.Add(journal.Info, "Téléchargement d'Aria Vault %s (%s)…", info.Version, taille(info.Taille))
+	dernier := -1
+	progression := func(fait, total int64) {
+		if total <= 0 {
+			return
+		}
+		if pct := int(fait * 100 / total); pct != dernier && s.app != nil {
+			dernier = pct
+			s.app.Event.Emit("maj-progression", pct)
+		}
+	}
+	zip, err := s.maj.Telecharger(context.Background(), info, filepath.Join(s.p.Base, "maj"), progression)
+	if err != nil {
+		s.j.Add(journal.Erreur, "Mise à jour : %v", err)
+		return err
+	}
+	defer os.Remove(zip)
+	s.j.Add(journal.OK, "Zip téléchargé, empreinte SHA-256 vérifiée")
+
+	annuler, err := maj.Installer(zip, exe, info.ExeSHA)
+	if err != nil {
+		s.j.Add(journal.Erreur, "Mise à jour : %v", err)
+		return err
+	}
+	cmd := exec.Command(exe)
+	cmd.Dir = filepath.Dir(exe)
+	if err := cmd.Start(); err != nil {
+		if aerr := annuler(); aerr != nil {
+			s.j.Add(journal.Erreur, "Retour à l'ancienne version impossible : %v", aerr)
+		}
+		s.j.Add(journal.Erreur, "La nouvelle version n'a pas démarré, l'ancienne est remise en place : %v", err)
+		return err
+	}
+	_ = cmd.Process.Release()
+	s.j.Add(journal.OK, "Aria Vault %s installé (empreinte de l'exe vérifiée) : il prend le relais", info.Version)
+	return nil
 }
 
 // OpenRelease ouvre la page de la nouvelle version.
@@ -421,6 +496,7 @@ func (s *VaultService) boucleMaj(ctx context.Context) {
 			if info, err := s.maj.Verifier(ctx); err == nil {
 				s.annoncerMaj(info)
 			}
+			s.signalerMaj()
 		}
 		if !t.Stop() {
 			select {

@@ -41,6 +41,7 @@ réseau sont celles nécessaires à ce que tu lui demandes :
 | Let's Encrypt | Obtention et renouvellement du certificat HTTPS | Non (indispensable au HTTPS) |
 | Résolveurs DNS publics (1.1.1.1, 9.9.9.9, 8.8.8.8) | Lire l'adresse publiée pour ton domaine | Oui, avec la publication de l'IP |
 | `api.github.com` | Une fois par jour : y a-t-il une nouvelle version d'Aria Vault ? | Oui (page Réglages) |
+| `github.com` (releases de ce dépôt) | Téléchargement de la nouvelle version, uniquement quand tu cliques sur « Installer » | Oui : il suffit de ne pas cliquer |
 
 Vaultwarden, embarqué, peut télécharger les icônes des sites enregistrés dans ton coffre quand
 une appli Bitwarden les demande (comportement par défaut de Vaultwarden, voir sa

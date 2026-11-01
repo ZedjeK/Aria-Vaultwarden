@@ -52,3 +52,26 @@ func TestVerifier(t *testing.T) {
 		t.Errorf("%+v %v", info, err)
 	}
 }
+
+func TestLireInstallable(t *testing.T) {
+	const zipSHA = "9082edb5cdd219b57c82400ecc350d907f4a95f90df542ace86a67e91ff6e84c"
+	const exeSHA = "2b13f26d4e66bb781161467e49a888db6c48318b6f59561d8c231f7db17be714"
+	corps := func(digest, url string) string {
+		return `{"tag_name":"v0.6.1","html_url":"https://github.com/ZedjeK/Aria-Vault/releases/tag/v0.6.1",
+		"body":"## Empreintes SHA-256\r\n\r\n` + "```" + `\r\n` + zipSHA + `  Aria-Vault-0.6.1.zip\r\n` + exeSHA + `  Aria-Vault.exe (dans le zip)\r\n` + "```" + `",
+		"assets":[{"name":"Aria-Vault-0.6.1.zip","browser_download_url":"` + url + `","digest":"` + digest + `","size":58983288}]}`
+	}
+	bonne := "https://github.com/ZedjeK/Aria-Vault/releases/download/v0.6.1/Aria-Vault-0.6.1.zip"
+	info, err := Lire([]byte(corps("sha256:"+zipSHA, bonne)), "0.6.0")
+	if err != nil || !info.Installable || info.ZipSHA != zipSHA || info.ExeSHA != exeSHA || info.Zip != bonne {
+		t.Fatalf("%+v %v", info, err)
+	}
+	// Empreinte GitHub et notes en désaccord : pas d'installation automatique.
+	if info, _ := Lire([]byte(corps("sha256:"+exeSHA, bonne)), "0.6.0"); info.Installable {
+		t.Error("empreintes discordantes acceptées")
+	}
+	// Zip hébergé ailleurs que dans les releases du dépôt : refusé.
+	if info, _ := Lire([]byte(corps("", "https://exemple.com/Aria-Vault-0.6.1.zip")), "0.6.0"); info.Installable {
+		t.Error("zip étranger accepté")
+	}
+}

@@ -23,6 +23,7 @@ import (
 	"aria-vault/internal/demarrage"
 	"aria-vault/internal/eveil"
 	"aria-vault/internal/journal"
+	"aria-vault/internal/maj"
 	"aria-vault/internal/moteur"
 	"aria-vault/internal/paths"
 	"aria-vault/internal/releve"
@@ -84,9 +85,10 @@ func main() {
 	}
 
 	var (
-		window *application.WebviewWindow
-		tray   *application.SystemTray
-		toggle *application.MenuItem
+		window  *application.WebviewWindow
+		tray    *application.SystemTray
+		toggle  *application.MenuItem
+		majItem *application.MenuItem
 	)
 	svc := nouveauService(p, j)
 	if cfg, err := config.Load(p.Config); err == nil {
@@ -135,6 +137,9 @@ func main() {
 
 	// Ici, on est l'instance principale (Wails a déjà arrêté les doublons).
 	if exe, err := executable(); err == nil {
+		if maj.Nettoyer(exe) {
+			j.Add(journal.Info, "Ancien exe de la mise à jour précédente supprimé")
+		}
 		if msg, err := demarrage.Aligner(exe, argSilencieux); err != nil {
 			j.Add(journal.Erreur, "Lancement à l'ouverture de session : %v", err)
 		} else if msg != "" {
@@ -172,7 +177,19 @@ func main() {
 		tray.SetIcon(icon)
 		tray.SetTooltip(tip)
 		toggle.SetLabel(action)
+
+		// Mise à jour : l'entrée du menu dit si Aria est à jour.
+		m := svc.maj.Info()
+		switch {
+		case m.Disponible:
+			majItem.SetLabel("Installer Aria Vault " + m.Version + "…").SetEnabled(true)
+		case m.Version != "" && m.Erreur == "":
+			majItem.SetLabel("Aria Vault " + version + " est à jour").SetEnabled(false)
+		default:
+			majItem.SetLabel("Aria Vault " + version).SetEnabled(false)
+		}
 	}
+	svc.onMaj = func() { application.InvokeAsync(majTray) }
 	svc.moteur = moteur.New(p, j, func() {
 		svc.appliquerVeille()
 		application.InvokeAsync(majTray)
@@ -232,6 +249,11 @@ func main() {
 		}()
 	})
 	menu.AddSeparator()
+	// Installer demande une confirmation : on ouvre la page Réglages.
+	majItem = menu.Add("Aria Vault " + version).SetEnabled(false).OnClick(func(*application.Context) {
+		montrer()
+		app.Event.Emit("page", "reglages")
+	})
 	menu.Add("Quitter (arrête le serveur)").OnClick(func(*application.Context) { app.Quit() })
 
 	tray = app.SystemTray.New()

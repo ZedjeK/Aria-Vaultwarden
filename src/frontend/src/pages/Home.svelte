@@ -54,6 +54,21 @@
         ]
       : []),
     {
+      id: 'version',
+      page: 'reglages',
+      tag: !st?.verifMaj ? 'off' : st?.maj?.disponible ? 'alert' : st?.maj?.version ? 'ok' : 'wait',
+      name: 'version',
+      detail: !st?.verifMaj
+        ? `${st?.version ?? ''}, vérification désactivée`
+        : st?.maj?.disponible
+          ? `${st.version} · la ${st.maj.version} est disponible`
+          : st?.maj?.version
+            ? `${st.version} · à jour`
+            : st?.maj?.erreur
+              ? `${st?.version ?? ''} · GitHub injoignable pour l'instant`
+              : `${st?.version ?? ''} · vérification en cours`,
+    },
+    {
       id: 'autostart',
       page: 'reglages',
       tag: st?.autostart ? 'ok' : 'off',

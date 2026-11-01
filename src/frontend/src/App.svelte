@@ -3,7 +3,7 @@
   import { Events } from '@wailsio/runtime'
   import Icon from './lib/Icon.svelte'
   import Logo from './lib/Logo.svelte'
-  import { app, refresh, refreshJournal, startPolling, openVault, openRelease } from './lib/state.svelte.js'
+  import { app, refresh, refreshJournal, startPolling, openVault, openRelease, installUpdate } from './lib/state.svelte.js'
   import Home from './pages/Home.svelte'
   import Https from './pages/Https.svelte'
   import Reglages from './pages/Reglages.svelte'
@@ -26,9 +26,17 @@
     refreshJournal()
     startPolling()
     // Le Go peut demander d'afficher une page (ex. sauvegarde lancée depuis l'icône sans dossier).
-    return Events.On('page', (e) => {
+    const off1 = Events.On('page', (e) => {
       if (nav.some((n) => n.id === e.data)) app.page = e.data
     })
+    // Progression du téléchargement d'une mise à jour
+    const off2 = Events.On('maj-progression', (e) => {
+      if (app.installation !== null) app.installation = Number(e.data) || 0
+    })
+    return () => {
+      off1?.()
+      off2?.()
+    }
   })
 </script>
 
@@ -95,8 +103,20 @@
     {/if}
     {#if app.status?.maj?.disponible}
       <div class="maj" role="status">
-        <span><strong>Aria Vault {app.status.maj.version}</strong> est disponible · tu as la {app.status.version}</span>
-        <button class="btn-primary small" onclick={openRelease} disabled={app.busy}>Voir la nouvelle version ↗</button>
+        {#if app.installation !== null}
+          <span class="maj-texte">
+            {app.installation < 100 ? `Téléchargement d'Aria Vault ${app.status.maj.version}… ${app.installation} %` : `Aria Vault ${app.status.maj.version} installé : il prend le relais, cette fenêtre va se fermer.`}
+          </span>
+          <span class="barre" aria-hidden="true"><span style:width="{app.installation}%"></span></span>
+        {:else}
+          <span><strong>Aria Vault {app.status.maj.version}</strong> est disponible · tu as la {app.status.version}</span>
+          <span class="maj-btns">
+            <button class="btn-ghost small" onclick={openRelease} disabled={app.busy}>Nouveautés ↗</button>
+            {#if app.status.maj.installable}
+              <button class="btn-primary small" onclick={installUpdate} disabled={app.busy}>Installer</button>
+            {/if}
+          </span>
+        {/if}
       </div>
     {/if}
 
@@ -326,6 +346,27 @@
   .maj strong {
     color: var(--accent);
     font-weight: 600;
+  }
+  .maj-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .maj-texte {
+    color: var(--text);
+  }
+  .barre {
+    flex-basis: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line-soft);
+    overflow: hidden;
+  }
+  .barre span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    box-shadow: 0 0 8px var(--accent);
+    transition: width 0.2s;
   }
 
   .content {
